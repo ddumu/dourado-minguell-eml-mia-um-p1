@@ -85,3 +85,26 @@ def plot_optimal_selections(steps: int, optimal_selections: np.ndarray, algorith
     plt.legend(title='Algoritmos')
     plt.tight_layout()
     plt.show()
+
+
+def plot_regret(steps: int, regret_accumulated: np.ndarray, algorithms: List[Algorithm], *args):
+  """
+  Genera la gráfica de Regret Acumulado vs Pasos de Tiempo
+  :param steps: Número de pasos de tiempo.
+  :param regret_accumulated: Matriz de regret acumulado (algoritmos x pasos).
+  :param algorithms: Lista de instancias de algoritmos comparados.
+  :param args: Opcional. Parámetros que consideres. P.e. la cota teórica Cte * ln(T).
+  """
+  sns.set_theme(style="whitegrid", palette="muted", font_scale=1.2)
+
+  plt.figure(figsize=(14, 7))
+  for idx, algo in enumerate(algorithms):
+      label = get_algorithm_label(algo)
+      plt.plot(range(steps), regret_accumulated[idx], label=label, linewidth=2)
+
+  plt.xlabel('Pasos de Tiempo', fontsize=14)
+  plt.ylabel('Arrepentimiento', fontsize=14)
+  plt.title('Arrepentimiento vs Pasos de Tiempo', fontsize=16)
+  plt.legend(title='Algoritmos')
+  plt.tight_layout()
+  plt.show()
