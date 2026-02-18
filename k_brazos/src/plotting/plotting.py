@@ -19,7 +19,7 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 from matplotlib.patches import Patch
 
-from algorithms import Algorithm, EpsilonGreedy
+from algorithms import Algorithm, EpsilonGreedy, SoftMax, UCB1
 
 
 def get_algorithm_label(algo: Algorithm) -> str:
@@ -34,6 +34,10 @@ def get_algorithm_label(algo: Algorithm) -> str:
     label = type(algo).__name__
     if isinstance(algo, EpsilonGreedy):
         label += f" (epsilon={algo.epsilon})"
+    elif isinstance(algo, SoftMax):
+        label += f" (temperature={algo.temperature})"
+    elif isinstance(algo, UCB1):
+        label += " (UCB1)"
     # elif isinstance(algo, OtroAlgoritmo):
     #     label += f" (parametro={algo.parametro})"
     # Añadir más condiciones para otros algoritmos aquí

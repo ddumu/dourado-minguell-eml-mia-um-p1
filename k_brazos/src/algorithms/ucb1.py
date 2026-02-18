@@ -33,7 +33,11 @@ class UCB1(Algorithm):
         # Selecciona el brazo con la recompensa promedio estimada más alta
         # https://towardsdatascience.com/the-upper-confidence-bound-ucb-bandit-algorithm-c05c2bf4c13f/
         # https://en.wikipedia.org/wiki/Upper_Confidence_Bound
-
-        ucb_value = self.values + np.sqrt(2*np.log(np.sum(self.counts))/self.counts)
-        chosen_arm = np.argmax(ucb_value)
+        idle_arms = np.where(self.counts == 0)[0]
+        if len(idle_arms)>0:
+            chosen_arm = idle_arms[0]
+            # print(f"Brazo elegido {chosen_arm}")
+        else: 
+            ucb_value = self.values + np.sqrt(2*np.log(np.sum(self.counts))/self.counts)
+            chosen_arm = np.argmax(ucb_value)
         return int(chosen_arm)
