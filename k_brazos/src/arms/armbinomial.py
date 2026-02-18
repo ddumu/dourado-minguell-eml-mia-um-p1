@@ -39,7 +39,7 @@ class ArmBinomial(Arm):
 
         :return: Recompensa obtenida del brazo.
         """
-        reward = np.random.binomial(1, self.mu, self.tries)/self.tries
+        reward = np.random.binomial(self.tries, self.mu)/self.tries
         # reward = np.random.normal(self.mu, self.sigma)
         return float(reward)
 
