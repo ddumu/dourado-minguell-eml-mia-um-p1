@@ -17,6 +17,8 @@ import numpy as np
 
 from arms import Arm
 
+SEED = 42
+np.random.seed(SEED)  # Fijar la semilla para reproducibilidad
 
 class ArmNormal(Arm):
     def __init__(self, mu: float, sigma: float):

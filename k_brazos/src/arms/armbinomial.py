@@ -16,6 +16,8 @@ import numpy as np
 
 from arms import Arm
 
+SEED = 42
+np.random.seed(SEED)  # Fijar la semilla para reproducibilidad
 
 class ArmBinomial(Arm):
     def __init__(self, mu: float, tries: int):

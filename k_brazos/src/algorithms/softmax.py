@@ -14,6 +14,9 @@ import numpy as np
 
 from algorithms.algorithm import Algorithm
 
+SEED = 42
+np.random.seed(SEED)  # Fijar la semilla para reproducibilidad
+
 class SoftMax(Algorithm):
     def __init__(self, k: int, epsilon: float = 1):
         """
