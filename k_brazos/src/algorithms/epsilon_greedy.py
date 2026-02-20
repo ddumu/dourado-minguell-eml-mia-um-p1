@@ -14,8 +14,6 @@ For more details about GPL-3.0: https://www.gnu.org/licenses/gpl-3.0.html
 
 import numpy as np
 
-SEED = 42
-np.random.seed(SEED)  # Fijar la semilla para reproducibilidad
 
 from algorithms.algorithm import Algorithm
 

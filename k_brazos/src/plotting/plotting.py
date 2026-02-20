@@ -37,7 +37,7 @@ def get_algorithm_label(algo: Algorithm) -> str:
     elif isinstance(algo, SoftMax):
         label += f" (temperature={algo.temperature})"
     elif isinstance(algo, UCB1):
-        label += " (UCB1)"
+        label += f" (adjust={algo.exploration})"
     # elif isinstance(algo, OtroAlgoritmo):
     #     label += f" (parametro={algo.parametro})"
     # Añadir más condiciones para otros algoritmos aquí

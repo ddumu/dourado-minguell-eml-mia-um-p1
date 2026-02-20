@@ -14,8 +14,6 @@ import numpy as np
 
 from algorithms.algorithm import Algorithm
 
-SEED = 42
-np.random.seed(SEED)  # Fijar la semilla para reproducibilidad
 
 class SoftMax(Algorithm):
     def __init__(self, k: int, temperature: float = 1):
@@ -52,4 +50,3 @@ class SoftMax(Algorithm):
             # print(softmax_value)
             chosen_arm = np.random.choice(self.k, p=softmax_value)
         return chosen_arm
-    
