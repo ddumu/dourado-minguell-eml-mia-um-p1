@@ -1,0 +1,8 @@
+[project]
+name = "entornos-complejos"
+version = "0.1.0"
+readme = "README.md"
+requires-python = "==3.12.12"
+dependencies = [
+    "jupyterlab>=4.5.7",
+]
