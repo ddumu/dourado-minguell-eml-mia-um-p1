@@ -6,8 +6,6 @@ Author: Luis Daniel Hernández Molinero
 Email: ldaniel@um.es
 Date: 2025/01/29
 
-Modified By: Denis Dourado Broncano & Diego Alberto Minguell Soto
-
 This software is licensed under the GNU General Public License v3.0 (GPL-3.0),
 with the additional restriction that it may not be used for commercial purposes.
 
@@ -17,7 +15,7 @@ For more details about GPL-3.0: https://www.gnu.org/licenses/gpl-3.0.html
 
 import numpy as np
 
-from .arm import Arm
+from arms import Arm
 
 
 class ArmNormal(Arm):
@@ -67,11 +65,13 @@ class ArmNormal(Arm):
         :param k: Número de brazos a generar.
         :param mu_min: Valor mínimo de la media.
         :param mu_max: Valor máximo de la media.
+        :param sigma: Desviación estándar.
         :return: Lista de brazos generados.
         """
         assert k > 0, "El número de brazos k debe ser mayor que 0."
         assert mu_min < mu_max, "El valor de mu_min debe ser menor que mu_max."
-
+        assert sigma > 0, "La desviación estándard debe ser mayor que 0."
+        
         # Generar k- valores únicos de mu con decimales
         mu_values = set()
         while len(mu_values) < k:
@@ -80,8 +80,6 @@ class ArmNormal(Arm):
             mu_values.add(mu)
 
         mu_values = list(mu_values)
-        sigma = sigma
-
         arms = [ArmNormal(mu, sigma) for mu in mu_values]
 
         return arms

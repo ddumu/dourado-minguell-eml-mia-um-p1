@@ -38,7 +38,7 @@ def get_algorithm_label(algo: Algorithm) -> str:
     elif isinstance(algo, SoftMax):
         label += f" (temperature={algo.temperature})"
     elif isinstance(algo, UCB1):
-        label += f" (adjust={algo.exploration})"
+        label += f" (exploration={algo.exploration})"
     # elif isinstance(algo, OtroAlgoritmo):
     #     label += f" (parametro={algo.parametro})"
     # Añadir más condiciones para otros algoritmos aquí
@@ -158,18 +158,24 @@ def plot_arm_statistics(arm_stats: np.ndarray, algorithms: List[Algorithm], save
 
         # Extraer el nombre del algoritmo
         algo_name = get_algorithm_label(algorithms[algo_idx])
+        
         # Rango con el número de brazos
         x = range(len(algo_stats))
+        
         # Extraer los valores del diccionario
         y_n_selected = [algo_stats[i]["n_times_selected"] for i in x]
         y_avg_reward = [algo_stats[i]["avg_reward"] for i in x]
         y_is_optimal = [algo_stats[i]["is_optimal"] for i in x]
+        
         # Array con un 1 en la posición del brazo óptimo
         optimal_index = y_is_optimal.index(True)
+        
         # Graficar barras
         bars = ax.bar(x, y_avg_reward, color="blue")
+        
         # Cambiar el color del brazo óptimo
         bars[optimal_index].set_color("gold")
+        
         # Añadir etiquetas con el número de veces seleccionado de cada brazo
         for i, bar in enumerate(bars):
             ax.text(  # <-- ax.text en lugar de plt.text
@@ -180,21 +186,26 @@ def plot_arm_statistics(arm_stats: np.ndarray, algorithms: List[Algorithm], save
                 va="bottom",
                 fontsize=10
             )
+            
         # Configurar ejes y título
         ax.set_title(f"{algo_name}", fontsize=14)
         ax.set_xlabel("Brazo", fontsize=12)
         ax.set_ylabel("Recompensa Promedio", fontsize=12)
         ax.set_xticks(list(x))
         ax.set_xticklabels([str(i) for i in x])
-        # Crear una leyenda con información
-        ax.legend(handles=[  # <-- ax.legend en lugar de plt.legend
+        
+    fig.legend(
+        handles=[
             Patch(facecolor="blue", label="Brazo No Óptimo"),
-            Patch(facecolor="gold", label=f"Brazo Óptimo = {optimal_index}"),
+            Patch(facecolor="gold", label="Brazo Óptimo"),
             Patch(facecolor="none", label="z = Número de Veces Seleccionado")
-        ], fontsize=10)
-
-    # Mostrar la gráfica
+        ],
+        fontsize=10,
+        loc="center"
+    )
+        
     plt.tight_layout()
+    plt.subplots_adjust(right=0.85)
 
     os.makedirs(save_path, exist_ok=True)
     plt.savefig(f"{save_path}/plot_arm_stats.png")
