@@ -2,8 +2,8 @@ from typing import List
 
 import numpy as np
 
-from arms import Bandit
-from algorithms import Algorithm
+from src.arms import Bandit
+from src.algorithms import Algorithm
 
 
 # Modified from source: https://github.com/ldaniel-hm/eml_k_bandit/blob/main/bandit_experiment.ipynb
