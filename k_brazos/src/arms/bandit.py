@@ -18,7 +18,7 @@ from typing import List
 
 import numpy as np
 
-from arms import Arm
+from src.arms import Arm
 
 
 class Bandit:
