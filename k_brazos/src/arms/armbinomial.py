@@ -14,7 +14,7 @@ For more details about GPL-3.0: https://www.gnu.org/licenses/gpl-3.0.html
 
 import numpy as np
 
-from arms import Arm
+from src.arms import Arm
 
 
 class ArmBinomial(Arm):
