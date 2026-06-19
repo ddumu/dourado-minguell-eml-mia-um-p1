@@ -1,202 +1,174 @@
-import math
+import os
 import numpy as np
+import gymnasium as gym
 from tqdm import tqdm
 import matplotlib.pyplot as plt
-import torch
-import torch.nn as nn
-import torch.optim as optim
-import gymnasium as gym
 import matplotlib.animation as animation
 from IPython.display import HTML
 
-# Función para obtener el vector de características x(s, a) usando codificación one-hot
-def get_features(state, action, num_states, nA):
-    # Vector de tamaño total: num_states * nA
-    x = np.zeros(num_states * nA)
-    # Activamos la característica correspondiente al par (estado, acción)
-    feature_idx = state * nA + action
-    x[feature_idx] = 1.0
-    return x
+# --- RBF Featurization ---
+num_centros_pos = 10
+num_centros_vel = 10
+NUM_FEATURES = num_centros_pos * num_centros_vel
 
-# Función para calcular Q(s, a) a partir de los pesos w
-def get_Q_value(w, state, action, num_states, nA):
-    x = get_features(state, action, num_states, nA)
-    return np.dot(w, x)
+pos_centros = np.linspace(-1.2, 0.6, num_centros_pos)
+vel_centros = np.linspace(-0.07, 0.07, num_centros_vel)
+CENTROS = np.array([[p, v] for p in pos_centros for v in vel_centros])
 
-# Función para obtener los valores Q de todas las acciones en un estado dado
-def get_all_Q_values_for_state(w, state, num_states, nA):
-    Q_s = np.zeros(nA)
-    for a in range(nA):
-        Q_s[a] = get_Q_value(w, state, a, num_states, nA)
-    return Q_s
+# Normalizamos el espacio de estados para aplicar sigma único correctamente
+# Rango posición: 1.8, rango velocidad: 0.14
+POS_RANGE = 1.8
+VEL_RANGE = 0.14
+SCALE = np.array([POS_RANGE, VEL_RANGE])  # (2,)
 
-# Política epsilon-soft adaptada a aproximación por función
-def random_epsilon_greedy_policy(w, epsilon, state, num_states, nA):
-    pi_A = np.ones(nA, dtype=float) * epsilon / nA
-    Q_s = get_all_Q_values_for_state(w, state, num_states, nA)
-    best_action = np.argmax(Q_s)
-    pi_A[best_action] += (1.0 - epsilon)
-    return pi_A
+# Estandarizamos centros y usaremos estados estandarizados
+CENTROS_SCALED = CENTROS / SCALE  # (100, 2)
 
-# Política epsilon-greedy para la selección de acciones
-def epsilon_greedy_policy(w, epsilon, state, num_states, nA):
-    pi_A = random_epsilon_greedy_policy(w, epsilon, state, num_states, nA)
-    return np.random.choice(np.arange(nA), p=pi_A)
+SIGMA = 0.3  # Ahora en unidades normalizadas (0.3 de "unidad de estado")
 
-# Política Greedy a partir de los valores Q. Se usa para mostrar la solución.
-def pi_star_from_Q(env, Q):
+ACTION_SAMPLES = np.linspace(-1.0, 1.0, num=21)
+NUM_ACTIONS = len(ACTION_SAMPLES)
+
+
+def get_state_features(state):
+    """RBF features con sigma balanceado tras normalización por rango."""
+    state_scaled = state / SCALE  # shape (2,)
+    dists = np.sum((CENTROS_SCALED - state_scaled) ** 2, axis=1)
+    phi = np.exp(-dists / (2 * SIGMA ** 2))
+    return phi
+
+
+def greedy_action(w, state):
+    phi = get_state_features(state)
+    q_valores = np.dot(w, phi)  # w: (21, 100), phi: (100,) -> (21,)
+    best_idx = np.argmax(q_valores)
+    return best_idx, np.array([ACTION_SAMPLES[best_idx]], dtype=np.float32)
+
+
+def epsilon_greedy_policy(env, w, epsilon, state):
+    if np.random.random() < epsilon:
+        random_idx = np.random.choice(NUM_ACTIONS)
+        return random_idx, np.array([ACTION_SAMPLES[random_idx]], dtype=np.float32)
+    return greedy_action(w, state)
+
+
+def semi_gradient_sarsa(env, num_episodes=5000, epsilon=0.4, decay=False, discount_factor=0.99, alpha=0.01):
+    # Inicialización aleatoria pequeña para romper simetría
+    rng = np.random.default_rng(42)
+    w = rng.uniform(-0.001, 0.001, (NUM_ACTIONS, NUM_FEATURES))
+
+    stats = 0.0
+    list_stats = [stats]
+    list_episodes_length = []
+    step_display = max(1, num_episodes // 10)
+
+    for t in tqdm(range(num_episodes)):
+        state, info = env.reset()
+        done = False
+        episode_reward = 0.0
+        step_count = 0
+
+        # Decaimiento exponencial RESPETANDO el epsilon inicial pasado
+        if decay:
+            epsilon = max(0.05, epsilon * np.exp(-t / 1500))
+
+        action_idx, action = epsilon_greedy_policy(env, w, epsilon, state)
+
+        while not done:
+            step_count += 1
+
+            new_state, reward, terminated, truncated, info = env.step(action)
+            done = terminated or truncated
+            episode_reward += reward
+
+            phi = get_state_features(state)
+
+            # Q(s,a) para la acción tomada
+            q_current = np.dot(w[action_idx], phi)
+
+            if done:
+                target = reward
+                w[action_idx] += alpha * (target - q_current) * phi
+            else:
+                new_action_idx, new_action = epsilon_greedy_policy(env, w, epsilon, new_state)
+                phi_next = get_state_features(new_state)
+
+                q_next = np.dot(w[new_action_idx], phi_next)
+                target = reward + discount_factor * q_next
+
+                w[action_idx] += alpha * (target - q_current) * phi
+
+                state = new_state
+                action_idx = new_action_idx
+                action = new_action
+
+        stats += episode_reward
+        list_stats.append(stats / (t + 1))
+        list_episodes_length.append(step_count)
+
+        if t % step_display == 0 and t != 0:
+            print(f"Episodio {t} -> Reward medio acumulado: {stats / t:.4f}, Epsilon: {epsilon:.4f}")
+
+    print(f"Proporción final de Reward: {stats / max(1, t):.4f}")
+    return w, w, list_stats, list_episodes_length
+
+
+def pi_star_from_Q(env, w):
+    state, info = env.reset()
     done = False
-    pi_star = np.zeros([env.observation_space.n, env.action_space.n])
-    state, info = env.reset() # empezamos arriba a la izquierda = 0
-    actions = ""
+    actions = []
+    total_reward = 0
+
     while not done:
-        # Volvemos a usar la matriz Q directamente como en el cuaderno original
-        action = np.argmax(Q[state, :])
-        actions += f"{action}, "
-        pi_star[state, action] = action
+        _, action = greedy_action(w, state)
+        actions.append(f"{action[0]:.3f}")
         state, reward, terminated, truncated, info = env.step(action)
+        total_reward += reward
         done = terminated or truncated
-    return pi_star, actions
 
-#@title Algoritmo SARSA Semi-gradiente
-
-def semi_gradient_sarsa(env, num_episodes=5000, epsilon=0.4, decay=False, discount_factor=1.0, alpha=0.1):
-  num_states = env.observation_space.n
-  nA = env.action_space.n
-
-  # Inicializamos el vector de pesos w de forma aleatoria o en ceros
-  # Tamaño: (num_estados * num_acciones)
-  w = np.zeros(num_states * nA)
-
-  # Métricas para las gráficas
-  stats = 0.0
-  list_stats = [stats]
-  list_episodes_length = []
-  step_display = num_episodes / 10
-
-  for t in tqdm(range(num_episodes)):
-      state, info = env.reset(seed=100)
-      done = False
-      episode_reward = 0.0
-      step_count = 0
-
-      if decay:
-          epsilon = min(1.0, 1000.0 / (t + 1))
-
-      # 1. Seleccionar la acción inicial A mediante política epsilon-greedy
-      action = epsilon_greedy_policy(w, epsilon, state, num_states, nA)
-
-      while not done:
-          step_count += 1
-
-          # 2. Ejecutar la acción A, observar R y el nuevo estado S'
-          new_state, reward, terminated, truncated, info = env.step(action)
-          done = terminated or truncated
-          episode_reward += reward # Acumulamos para estadísticas sin descuento para evaluar éxito
-
-          # Calcular x(s, a) y q(s, a, w) actuales
-          x_current = get_features(state, action, num_states, nA)
-          q_current = np.dot(w, x_current)
-
-          if done:
-              # Si es un estado terminal, el valor del siguiente estado-acción es 0
-              target = reward
-          else:
-              # 3. Seleccionar la siguiente acción A' usando la política basada en w
-              new_action = epsilon_greedy_policy(w, epsilon, new_state, num_states, nA)
-
-              # Calcular q(s', a', w)
-              q_next = get_Q_value(w, new_state, new_action, num_states, nA)
-              target = reward + discount_factor * q_next
-
-          # 4. Actualización Semi-gradiente de los pesos:
-          # w <- w + alpha * [Target - q(s, a, w)] * Gradiente
-          # En aproximación lineal, Gradiente = x(s, a)
-          w += alpha * (target - q_current) * x_current
-
-          # Actualizar estado y acción para la siguiente iteración del bucle
-          if not done:
-              state = new_state
-              action = new_action
-
-      # Guardamos datos sobre la evolución (proporción acumulada de éxito)
-      stats += episode_reward
-      list_stats.append(stats / (t + 1))
-      list_episodes_length.append(step_count)
-
-      # Mostrar progreso
-      if t % step_display == 0 and t != 0:
-          print(f"success rate: {stats / t:.4f}, epsilon: {epsilon:.4f}")
-          
-  print(f"success rate: {stats / t:.4f}, epsilon: {epsilon:.4f}")
-  # Reconstruimos una matriz Q final ficticia solo para mantener la compatibilidad
-  # con los prints del cuaderno original.
-  Q_final = np.zeros([num_states, nA])
-  for s in range(num_states):
-      for a in range(nA):
-          Q_final[s, a] = get_Q_value(w, s, a, num_states, nA)
-
-  return w, Q_final, list_stats, list_episodes_length
+    actions_str = ", ".join(actions[:15]) + "..." if len(actions) > 15 else ", ".join(actions)
+    return f"Política completada con Recompensa Total: {total_reward}", actions_str
 
 
 def plot(list_stats):
-  # Creamos una lista de índices para el eje x
-  indices = list(range(len(list_stats)))
+    plt.figure(figsize=(6, 3))
+    plt.plot(list_stats)
+    plt.title('Proporción Acumulada de Recompensas')
+    plt.xlabel('Episodio')
+    plt.ylabel('Media de Recompensa')
+    plt.grid(True)
+    plt.show()
 
-  # Creamos el gráfico
-  plt.figure(figsize=(6, 3))
-  plt.plot(indices, list_stats)
 
-  # Añadimos título y etiquetas
-  plt.title('Proporción de recompensas')
-  plt.xlabel('Episodio')
-  plt.ylabel('Proporción')
-
-  # Mostramos el gráfico
-  plt.grid(True)
-  plt.show()
-
-# Define la función para mostrar el tamaño de los episodios
 def plot_episodes_length(list_episodes_length):
-  # Creamos una lista de índices para el eje x
-  indices = list(range(len(list_episodes_length)))
-
-  # Creamos el gráfico
-  plt.figure(figsize=(6, 3))
-  plt.plot(indices, list_episodes_length)
-
-  # Añadimos título y etiquetas
-  plt.title('Tamaño de los Episodios')
-  plt.xlabel('Episodio')
-  plt.ylabel('Tamaño')
-
-  # Mostramos el gráfico
-  plt.grid(True)
-  plt.show()
+    plt.figure(figsize=(6, 3))
+    plt.plot(list_episodes_length)
+    plt.title('Duración de los Episodios')
+    plt.xlabel('Episodio')
+    plt.ylabel('Pasos')
+    plt.grid(True)
+    plt.show()
 
 
-def plot_policy_episodes(Q, episodes=1):
-    env = gym.make("FrozenLake-v1", is_slippery=False, map_name="8x8", render_mode="rgb_array")
+def plot_policy_episodes(w, episodes=1):
+    env = gym.make("MountainCarContinuous-v0", render_mode="rgb_array")
     frames = []
     for ep in range(episodes):
         state, info = env.reset()
         done = False
-
         while not done:
-            action = np.argmax(Q[state])
+            _, action = greedy_action(w, state)
             state, reward, terminated, truncated, info = env.step(action)
             done = terminated or truncated
             frames.append(env.render())
-
     env.close()
-    fig, ax = plt.subplots()
 
+    fig, ax = plt.subplots()
     def _update(i):
         ax.clear()
         ax.imshow(frames[i])
         ax.axis("off")
 
-    ani = animation.FuncAnimation(fig, _update, frames=len(frames))
+    ani = animation.FuncAnimation(fig, _update, frames=len(frames), interval=30)
     plt.close(fig)
-
     return HTML(ani.to_jshtml())
