@@ -10,5 +10,6 @@ dependencies = [
     "jupyter>=1.1.1",
     "numpy>=2.4.5",
     "seaborn>=0.13.2",
+    "torch>=2.12.1",
     "tqdm>=4.68.2",
 ]

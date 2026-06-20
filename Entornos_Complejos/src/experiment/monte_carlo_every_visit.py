@@ -10,7 +10,7 @@ def _random_epsilon_greedy_policy(Q, epsilon, state, nA):
     return pi_A
 
 # Original source: https://github.com/ldaniel-hm/eml_tabular/blob/main/MonteCarloTodasLasVisitas.ipynb
-def monte_carlo_every_visit(
+def monte_carlo(
     env,
     on_policy,
     num_episodes,
@@ -76,13 +76,15 @@ def monte_carlo_every_visit(
 
       # Hacer la acción en el entorno
       new_state, reward, terminated, truncated, info = env.step(behaviour_action)
+
+      # Marcar el fin del episodio
+      done = terminated or truncated
+
       # Guardar el episodio
       episode.append((state, behaviour_action, behaviour_action_prob, reward))
 
       # Cambiar de estado
       state = new_state
-      # Marcar el fin del episodio
-      done = terminated or truncated
 
     # Guardar la longitud del episodio para ver la evolución
     episodes_lengths.append(len(episode))
@@ -113,14 +115,14 @@ def monte_carlo_every_visit(
         # Calcular ganancia en este paso
         G = reward + discount_factor * G
 
+        # Acción elegida por la política objetivo
+        target_action = np.argmax(Q[state])
+
         # Acumular la suma de pesos de importancia para este par estado-acción
         N[state, behaviour_action] += W
 
         # Actualizar la matriz para el par estado-acción
         Q[state, behaviour_action] += (W / N[state, behaviour_action]) * (G - Q[state, behaviour_action])
-
-        # Acción elegida por la política objetivo
-        target_action = np.argmax(Q[state])
 
         # Si la acción de la política de comportamiento es diferente que la
         # acción de la política objetivo se para la propagación del retorno
@@ -130,7 +132,7 @@ def monte_carlo_every_visit(
         # Actualizar la estimación para el par estado-acción
         W *= 1.0 / behaviour_action_prob
 
-    # Guardamos datos sobre la evolución. Promedio de recompensas
+    # Guardar datos sobre la evolución
     episode_reward = sum(r for _, _, _, r in episode)
     episodes_rewards.append(episode_reward)
 
