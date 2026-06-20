@@ -1,14 +1,14 @@
-import os
-import gc
 import random
 from collections import deque
 import gymnasium as gym
 import matplotlib.pyplot as plt
+import matplotlib.animation as animation
 import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
 from tqdm import tqdm
+from IPython.display import HTML
 
 SEED = 2024
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -23,11 +23,11 @@ class DQN(nn.Module):
     def __init__(self, state_dim, n_actions):
         super().__init__()
         self.net = nn.Sequential(
-            nn.Linear(state_dim, 32),
+            nn.Linear(state_dim, 128),
             nn.ReLU(),
-            nn.Linear(32, 16),
+            nn.Linear(128, 128),
             nn.ReLU(),
-            nn.Linear(16, n_actions),
+            nn.Linear(128, n_actions),
         )
 
     def forward(self, state):
@@ -58,9 +58,13 @@ class ReplayBuffer:
         )
 
 def select_action(q_network, state, action_grid, epsilon=0.0):
-    """Selecciona acción usando Epsilon-Greedy de forma eficiente."""
+    """Selecciona acción usando Epsilon-Greedy con ruido gaussiano en exploración."""
     if np.random.random() < epsilon:
         action_idx = np.random.randint(len(action_grid))
+        base_action = action_grid[action_idx]
+        action = np.clip(base_action, action_grid.min(), action_grid.max())
+        closest_idx = np.argmin(np.abs(action_grid - action))
+        return action_grid[closest_idx], closest_idx
     else:
         with torch.no_grad():
             state_t = torch.tensor(state, dtype=torch.float32, device=DEVICE).unsqueeze(0)
@@ -69,16 +73,16 @@ def select_action(q_network, state, action_grid, epsilon=0.0):
             
     return action_grid[action_idx], action_idx
 
-# ==============================================================================
-# 4. ALGORITMO CORE: ENTRENAMIENTO DE DQN
-# ==============================================================================
-def train_dqn(env_name, num_episodes=1000, epsilon_init=1.0, epsilon_min=0.05, 
-              epsilon_decay=0.995, discount_factor=0.99, batch_size=64, 
-              replay_size=50000, target_update=10, learning_rate=1e-3, action_bins=11,
+
+
+def train_dqn(env_name, num_episodes=1000, epsilon_init=1.0, epsilon_min=0.1, 
+              decay=True, discount_factor=0.99, batch_size=64, 
+              replay_size=100000, target_update=10, learning_rate=1e-3, action_bins=21,
               train_every=4):
     
     env = gym.make(env_name)
     state_dim = env.observation_space.shape[0]
+    # print(f"Dimensión del espacio de estados: {env.observation_space}")
     step_display = max(1, num_episodes // 10)
 
     # Grid de acciones discretizadas
@@ -90,13 +94,13 @@ def train_dqn(env_name, num_episodes=1000, epsilon_init=1.0, epsilon_min=0.05,
     target_network.load_state_dict(q_network.state_dict())
     target_network.eval()
 
-    optimizer = optim.Adam(q_network.parameters(), lr=learning_rate)
+    optimizer = optim.Adam(q_network.parameters(), lr=learning_rate, )
     loss_fn = nn.SmoothL1Loss()  # Huber Loss para estabilidad
     replay_buffer = ReplayBuffer(replay_size)
 
     list_episodes_reward = []
     list_episodes_length = []
-    epsilon = float(epsilon_init)
+    epsilon = epsilon_init
 
     global_step = 0
     
@@ -106,12 +110,19 @@ def train_dqn(env_name, num_episodes=1000, epsilon_init=1.0, epsilon_min=0.05,
         episode_reward = 0.0
         episode_length = 0
 
+        if decay:
+            epsilon = max(0.05, epsilon * 0.995)
+
         while not done:
             action, action_idx = select_action(q_network, state, action_grid, epsilon)
             next_state, reward, terminated, truncated, _ = env.step(action)
             done = terminated or truncated
 
-            replay_buffer.push(state, action_idx, reward, next_state, terminated)
+            # Recompensas personalizadas para MountainCarContinuous-v0
+            custom_reward = reward 
+            custom_reward += abs(next_state[1]) * 6.0  # Premia velocidad para favorecer inercia necesaria
+
+            replay_buffer.push(state, action_idx, custom_reward, next_state, terminated)
             state = next_state
             episode_reward += reward
             episode_length += 1
@@ -139,8 +150,7 @@ def train_dqn(env_name, num_episodes=1000, epsilon_init=1.0, epsilon_min=0.05,
             torch.nn.utils.clip_grad_norm_(q_network.parameters(), max_norm=10.0)
             optimizer.step()
 
-        epsilon = max(epsilon_min, epsilon * epsilon_decay)
-        
+
         # Sincronización periódica de la red target
         if (episode + 1) % target_update == 0:
             target_network.load_state_dict(q_network.state_dict())
@@ -150,13 +160,28 @@ def train_dqn(env_name, num_episodes=1000, epsilon_init=1.0, epsilon_min=0.05,
         if episode % step_display == 0 and episode != 0:
             print(f"Episodio {episode} -> Reward medio acumulado: {np.mean(list_episodes_reward[-step_display:]):.4f}, Epsilon: {epsilon:.4f}")
 
-
     env.close()
     return q_network, action_grid, list_episodes_reward, list_episodes_length
 
-# ==============================================================================
-# 5. MÉTRICAS Y EVALUACIONES
-# ==============================================================================
+
+def pi_star_from_Q(env, q_network, action_grid):
+    state, info = env.reset()
+    done = False
+    actions = []
+    total_reward = 0
+
+    while not done:
+        # Usamos select_action con epsilon=0.0 para que sea 100% Greedy
+        action, _ = select_action(q_network, state, action_grid, epsilon=0.0)
+        actions.append(f"{action[0]:.3f}")
+        state, reward, terminated, truncated, info = env.step(action)
+        total_reward += reward
+        done = terminated or truncated
+
+    actions_str = ", ".join(actions[:15]) + "..." if len(actions) > 15 else ", ".join(actions)
+    return f"Política completada con Recompensa Total: {total_reward}", actions_str
+
+
 def plot(list_stats):
     plt.figure(figsize=(6, 3))
     plt.plot(list_stats)
@@ -165,6 +190,7 @@ def plot(list_stats):
     plt.ylabel('Media de Recompensa')
     plt.grid(True)
     plt.show()
+
 
 def plot_episodes_length(list_episodes_length):
     plt.figure(figsize=(6, 3))
@@ -175,44 +201,25 @@ def plot_episodes_length(list_episodes_length):
     plt.grid(True)
     plt.show()
 
-def plot_policy_episodes(w, episodes=1):
+
+def plot_policy_episodes(q_network, action_grid, episodes=1):
     env = gym.make("MountainCarContinuous-v0", render_mode="rgb_array")
     frames = []
     for ep in range(episodes):
         state, info = env.reset()
         done = False
         while not done:
-            action = greedy_action(w, state)
-            state, reward, terminated, truncated, info = env.step(action)
+            action, _ = select_action(q_network, state, action_grid, epsilon=0.0)
+            state, _, terminated, truncated, _ = env.step(action)
             done = terminated or truncated
             frames.append(env.render())
     env.close()
-
-def evaluate_and_animate(q_network, action_grid, episodes=1):
-    eval_env = gym.make("MountainCarContinuous-v0", render_mode="rgb_array")
-    frames = []
-    actions_taken = []
-    
-    for _ in range(episodes):
-        state, _ = eval_env.reset(seed=SEED)
-        done = False
-        while not done:
-            action, _ = select_action(q_network, state, action_grid, epsilon=0.0)
-            actions_taken.append(f"{float(action[0]):.2f}")
-            state, _, terminated, truncated, _ = eval_env.step(action)
-            done = terminated or truncated
-            frames.append(eval_env.render())
-    eval_env.close()
-
-    summary_actions = ", ".join(actions_taken[:20]) + "..." if len(actions_taken) > 20 else ", ".join(actions_taken)
-    print(f"\n[+] Muestra de acciones ejecutadas de forma Greedy: [{summary_actions}]")
-
     fig, ax = plt.subplots()
-    ax.axis("off")
-    im = ax.imshow(frames[0])
     def _update(i):
-        im.set_data(frames[i])
-        return [im]
-    ani = animation.FuncAnimation(fig, _update, frames=len(frames), interval=40, blit=True)
+        ax.clear()
+        ax.imshow(frames[i])
+        ax.axis("off")
+
+    ani = animation.FuncAnimation(fig, _update, frames=len(frames), interval=30)
     plt.close(fig)
     return HTML(ani.to_jshtml())

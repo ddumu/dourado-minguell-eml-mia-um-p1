@@ -68,7 +68,6 @@ def semi_gradient_sarsa(env, num_episodes=5000, epsilon=0.4, decay=False, discou
         episode_reward = 0.0
         step_count = 0
 
-        # Decaimiento exponencial RESPETANDO el epsilon inicial pasado
         if decay:
             epsilon = max(0.05, epsilon * np.exp(-t / 1500))
 
