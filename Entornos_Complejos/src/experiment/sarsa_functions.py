@@ -16,7 +16,7 @@ vel_centros = np.linspace(-0.07, 0.07, num_centros_vel)
 CENTROS = np.array([[p, v] for p in pos_centros for v in vel_centros])
 
 # Normalizamos el espacio de estados para aplicar sigma único correctamente
-# Rango posición: 1.8, rango velocidad: 0.14
+# Rango posición: 1.8 [-1.2, 0.6], rango velocidad: 0.14 [-0.07, 0.07]
 POS_RANGE = 1.8
 VEL_RANGE = 0.14
 SCALE = np.array([POS_RANGE, VEL_RANGE])  # (2,)

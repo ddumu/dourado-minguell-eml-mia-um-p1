@@ -34,7 +34,6 @@ class DQN(nn.Module):
         return self.net(state)
     
 class ReplayBuffer:
-    """Buffer optimizado para transferencias veloces a PyTorch."""
     def __init__(self, capacity):
         self.buffer = deque(maxlen=capacity)
 
