@@ -31,62 +31,15 @@ Dentro de estos cuadernos se puede acceder a cada uno de los experimentos que se
 Cada uno de las partes del trabajo contiene su propia carpeta donde se han ubicado todos los scripts adicionales necesarios para la ejecución de los experimentos.
 
 
-dourado-minguell-eml-mia-um-p1/
-├── README.md
-├── main.ipynb
-├── .venv/
-├── k_brazos/                      # Bandidos Multibrazo
-│   ├── main.ipynb
-│   ├── comparison_experiment.ipynb
-│   ├── epsilon_greedy_bernoulli_dist_experiment.ipynb
-│   ├── epsilon_greedy_binomial_dist_experiment.ipynb
-│   ├── epsilon_greedy_normal_dist_experiment.ipynb
-│   ├── softmax_bernoulli_dist_experiment.ipynb
-│   ├── softmax_binomial_dist_experiment.ipynb
-│   ├── softmax_normal_dist_experiment.ipynb
-│   ├── ucb1_bernoulli_dist_experiment.ipynb
-│   ├── ucb1_binomial_dist_experiment.ipynb
-│   ├── ucb1_normal_dist_experiment.ipynb
-│   └── src/
-│       ├── algorithms/
-│       │   ├── __init__.py
-│       │   ├── algorithm.py
-│       │   ├── epsilon_greedy.py
-│       │   ├── softmax.py
-│       │   └── ucb1.py
-│       ├── arms/
-│       │   ├── __init__.py
-│       │   ├── arm.py
-│       │   ├── armbernoulli.py
-│       │   ├── armbinomial.py
-│       │   ├── armnormal.py
-│       │   └── bandit.py
-│       ├── experiment/
-│       │   └── __init__.py
-│       └── plotting/
-│           ├── __init__.py
-│           └── plotting.py
-│
-└── Entornos_Complejos/            # Aprendizaje por Refuerzo en Entornos Complejos
-    ├── main.ipynb
-    ├── comparison_tabulars.ipynb
-    ├── Deep_Q_Learning.ipynb
-    ├── monte_carlo_off_policy_experiment.ipynb
-    ├── monte_carlo_on_policy_experiment.ipynb
-    ├── q_learning_experiment.ipynb
-    ├── sarsa_experiment.ipynb
-    ├── SARSA_Semi_Gradiente.ipynb
-    └── src/
-        ├── experiment/
-        │   ├── __init__.py
-        │   ├── deep_functions.py
-        │   ├── monte_carlo_every_visit.py
-        │   ├── q_learning.py
-        │   ├── sarsa.py
-        │   └── sarsa_functions.py
-        └── plotting/
-            ├── __init__.py
-            └── plotting.py
+
+dourado-minguell-eml-mia-um-p1/ <br>
+├── README.md  <br>
+├── main.ipynb <br>
+├── .venv/  <br>
+├── k_brazos/                      # Bandidos Multibrazo  <br>
+└── Entornos_Complejos/            # Aprendizaje por Refuerzo en Entornos Complejos <br>
+
+
 
 ## Instalación y Uso
 
