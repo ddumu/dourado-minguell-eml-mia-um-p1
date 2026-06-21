@@ -50,7 +50,7 @@ def plot_policy_episodes(env, Q, n_run, n_show, seed):
     rewards = []
 
     for ep in range(n_run):
-        state, info = env.reset(seed=(seed + 1) + ep)
+        state, info = env.reset(seed=n_run + seed + ep)
         done = False
 
         while not done:
