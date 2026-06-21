@@ -35,7 +35,6 @@ Cada uno de las partes del trabajo contiene su propia carpeta donde se han ubica
 dourado-minguell-eml-mia-um-p1/ <br>
 ├── README.md  <br>
 ├── main.ipynb <br>
-├── .venv/  <br>
 ├── k_brazos/                      # Bandidos Multibrazo  <br>
 └── Entornos_Complejos/            # Aprendizaje por Refuerzo en Entornos Complejos <br>
 
