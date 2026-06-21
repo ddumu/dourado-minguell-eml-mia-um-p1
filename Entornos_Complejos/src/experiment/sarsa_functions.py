@@ -24,7 +24,7 @@ SCALE = np.array([POS_RANGE, VEL_RANGE])  # (2,)
 # Estandarizamos centros y usaremos estados estandarizados
 CENTROS_SCALED = CENTROS / SCALE  # (100, 2)
 
-SIGMA = 0.3  # Ahora en unidades normalizadas (0.3 de "unidad de estado")
+SIGMA = 0.3
 
 ACTION_SAMPLES = np.linspace(-1.0, 1.0, num=21)
 NUM_ACTIONS = len(ACTION_SAMPLES)
